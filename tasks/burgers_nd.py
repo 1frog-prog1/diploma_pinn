@@ -75,7 +75,7 @@ class BurgersND:
             u, x, torch.ones_like(u), create_graph=True, retain_graph=True
         )[0]
 
-        # Compute spatial Laplacian (∇²u)
+        # Compute spatial Laplacian
         u_laplacian = torch.zeros_like(u)
         for i in range(self.dim):
             u_grad_i = u_grad[:, i:i+1]

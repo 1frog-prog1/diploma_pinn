@@ -4,19 +4,19 @@ import numpy as np
 
 def rff_transform(X, W, b):
     """
-    Преобразует входные данные X с помощью Random Fourier Features (RFF).
+    Transforms input data X using Random Fourier Features (RFF).
 
-    Аргументы:
-        X: torch.Tensor формы (N, d) — N точек в d-мерном пространстве (например, [x, t])
-        W: Матрица случайных частот (num_features, d)
-        b: Вектор случайных смещений (num_features)
+    Args:
+        X: torch.Tensor of shape (N, d) — N points in d-dimensional space (e.g., [x, t])
+        W: Matrix of random frequencies (num_features, d)
+        b: Vector of random offsets (num_features)
 
-    Возвращает:
-        torch.Tensor формы (N, 2*num_features)
+    Returns:
+        torch.Tensor of shape (N, 2*num_features)
     """
     projection = X @ W.T + b       # (N, num_features)
     rff = torch.cat([torch.cos(projection), torch.sin(projection)], dim=1)  # (N, 2*num_features)
-    rff = rff * (2.0 / W.shape[0]) ** 0.5  # масштабирование
+    rff = rff * (2.0 / W.shape[0]) ** 0.5  # scaling
     return rff
 
 
@@ -32,7 +32,7 @@ class MLP(nn.Module):
         self.seed = seed
 
         if self.rff_features != 0:
-            # Генерация фиксированных W и b
+            # Generate fixed W and b
             self.W, self.b = self._init_rff(input_dim, rff_sigma, seed)
 
         layers = []
@@ -41,14 +41,14 @@ class MLP(nn.Module):
                 layers.append(nn.Linear(input_dim + 2 * self.rff_features, hidden_layers[i]))
             else:
                 layers.append(nn.Linear(hidden_layers[i - 1], hidden_layers[i]))
-            layers.append(activtion)  # Активация
+            layers.append(activtion)  # Activation
         layers.append(nn.Linear(hidden_layers[-1], output_dim))
         self.model = nn.Sequential(*layers)
-        self.scaling_function = scaling_function  # Функция масштабирования
+        self.scaling_function = scaling_function  # Scaling function
 
     def _init_rff(self, input_dim, rff_sigma, seed):
         """
-        Инициализация случайных частот W и смещений b для RFF.
+        Initializes random frequencies W and offsets b for RFF.
         """
         gen = torch.Generator()
         if seed is not None:
@@ -59,11 +59,11 @@ class MLP(nn.Module):
                 mean=0.0, std=1.0 / rff_sigma, 
                 size=(self.rff_features, input_dim), generator=gen
             ),
-            requires_grad=False  # W не обучается
+            requires_grad=False  # W is not trainable
         )
         b = nn.Parameter(
             torch.rand(self.rff_features, generator=gen) * 2 * torch.pi,
-            requires_grad=False  # b не обучается
+            requires_grad=False  # b is not trainable
         )
         return W, b
 

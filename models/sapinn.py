@@ -52,22 +52,20 @@ class SA_PINN(nn.Module):
     @property
     def lambdas_bcs(self):
         return self.loss_class.lambdas_bcs
-    
 
-
-    # Лосс-функция
+    # Loss function
     def loss(self, x_pde, x_ics, x_bcs, x_data=None, u_data=None):
         """
-        Вычисляет функцию потерь для SA-PINN.
+        Computes the loss function for SA-PINN.
 
-        Параметры:
-        - x_data: входные данные для обучения (тензор).
-        - u_data: истинные значения для данных (тензор).
-        - x_pde: входные данные для физического уравнения (тензор).
-        - x_ics: входные данные для начальных условий (тензор).
-        - x_bcs: входные данные для граничных условий (тензор).
+        Parameters:
+        - x_data: input data for training (tensor).
+        - u_data: true values for the data (tensor).
+        - x_pde: input data for the physical equation (tensor).
+        - x_ics: input data for initial conditions (tensor).
+        - x_bcs: input data for boundary conditions (tensor).
 
-        Возвращает:
-        - Общая потеря (сумма data loss и physics loss).
+        Returns:
+        - Total loss (sum of data loss and physics loss).
         """
         return self.loss_class(x_pde, x_ics, x_bcs, x_data, u_data)

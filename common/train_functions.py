@@ -1,18 +1,19 @@
 import torch
 from models.utils.losses import PINN_Loss
 
-# Освобождение всех данных с CUDA
+# Move all data to the specified device
 def move_data_to_device(device, *args):
     updated_args = []
     for arg in args:
         if isinstance(arg, list):
-            updated_args.append([item.to(device) for item in arg])  # Перезаписываем элементы списка
+            updated_args.append([item.to(device) for item in arg])  # Update list elements
         elif arg is not None:
-            updated_args.append(arg.to(device))  # Перезаписываем тензор
+            updated_args.append(arg.to(device))  # Update tensor
         else:
-            updated_args.append(None)  # Если аргумент None, сохраняем его
+            updated_args.append(None)  # Keep None as is
     return updated_args
 
+# Move training data to the specified device
 def move_training_data_to_device(
         device, 
         x_data, u_data, x_physics, x_initial, x_boundary,
@@ -23,7 +24,7 @@ def move_training_data_to_device(
     )
     return x_data, u_data, x_physics, x_initial, x_boundary
 
-
+# Train PINN for one epoch
 def train_epoch_pinn(
         model, 
         optimizers, schedulers,
@@ -31,7 +32,7 @@ def train_epoch_pinn(
         x_data=None, u_data=None,
         device="cpu"):
     """
-    Обучение PINN за одну эпоху.
+    Train PINN for one epoch.
 
     Parameters:
     - model: The PINN model.
@@ -44,11 +45,11 @@ def train_epoch_pinn(
     model.train()
     total_loss = 0.0
 
-    # Обнуление градиентов для всех оптимизаторов
+    # Reset gradients for all optimizers
     for optimizer in optimizers.values():
         optimizer.zero_grad()
 
-    # Вычисление функции потерь
+    # Compute the loss function
     loss = model.loss(
         x_pde=x_physics, 
         x_ics=x_initial, 
@@ -58,10 +59,10 @@ def train_epoch_pinn(
     )
     total_loss += loss.item()
 
-    # Обратный проход и обновление параметров
-    loss.backward(retain_graph=True)  # Добавлено retain_graph=True, чтобы предотвратить освобождение графа
+    # Backward pass and parameter update
+    loss.backward(retain_graph=True)  # Added retain_graph=True to prevent graph release
     
-    # Шаг оптимизации для всех оптимизаторов
+    # Optimization step for all optimizers
     for optimizer in optimizers.values():
         optimizer.step()
 
@@ -70,19 +71,19 @@ def train_epoch_pinn(
 
     return total_loss
 
-
+# Evaluate PINN on the base loss
 def eval_pinn(
         model, x_physics, x_initial, x_boundary, 
         criterion,
         x_data=None, u_data=None, 
         device="cpu"):
     """
-    Оценка PINN на базовом лоссе.
+    Evaluate PINN on the base loss.
     """
     model.eval()
     total_loss = 0.0
 
-    # Вычисление функции потерь
+    # Compute the loss function
     loss = criterion(
         x_pde=x_physics, 
         x_ics=x_initial, 
@@ -94,7 +95,7 @@ def eval_pinn(
         
     return total_loss
 
-
+# Train PINN
 def train_pinn(
     max_epoch, 
     model, optimizers, schedulers,
@@ -102,7 +103,7 @@ def train_pinn(
     x_data=None, u_data=None, device="cpu"
 ):
     """
-    Обучение PINN.
+    Train PINN.
     """
 
     if device == "cuda":
@@ -115,7 +116,7 @@ def train_pinn(
     criterion = PINN_Loss(model.equation, model.u_model)
 
     for epoch in range(max_epoch):
-        # Обучение за одну эпоху
+        # Train for one epoch
         train_loss = train_epoch_pinn(
             model, 
             optimizers, schedulers, 
@@ -132,7 +133,7 @@ def train_pinn(
 
         if (epoch + 1) % 50 == 0:
             print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss}, True Loss: {true_loss}")
-            # print("Cuda memory_allocated", torch.cuda.memory_allocated())  # Используемая память
+            # print("Cuda memory_allocated", torch.cuda.memory_allocated())  # Used memory
             # print("Cuda memory reserved", torch.cuda.memory_reserved()) 
             
         if device == "cuda":
