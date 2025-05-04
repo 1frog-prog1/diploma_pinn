@@ -1,0 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment files
+.env
+.venv/
+env/
+venv/
+
+# Data files
+*.json
+*.csv
+*.h5
+*.npz
+
+# Logs and debug files
+*.log
+*.out
+*.err
+
+# System files
+.DS_Store
+Thumbs.db
+
+# PyTorch model files
+*.pt
+*.pth
+
+# Matplotlib figures
+*.png
+*.pdf
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Saved models
+*/saved_models/*
