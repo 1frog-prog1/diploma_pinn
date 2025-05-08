@@ -41,6 +41,10 @@ def plot_heatmaps_2d(tspace, xspace, datasets, titles, cmap='seismic', save_path
     :param cmap: Colormap for the heatmaps.
     :param save_path: Path to save the figure (optional).
     """
+    # Ensure tspace and xspace are NumPy arrays
+    tspace = np.array(tspace) if isinstance(tspace, list) else tspace
+    xspace = np.array(xspace) if isinstance(xspace, list) else xspace
+
     fig, ax = plt.subplots(ncols=len(datasets), figsize=(12, 6), sharey=True)
     for i, (title, data) in enumerate(zip(titles, datasets)):
         ax[i].set_title(title, fontsize=14)
@@ -68,6 +72,10 @@ def plot_single_heatmap_2d(tspace, xspace, data, title, cmap='seismic', save_pat
     :param cmap: Colormap for the heatmap.
     :param save_path: Path to save the figure (optional).
     """
+    # Ensure tspace and xspace are NumPy arrays
+    tspace = np.array(tspace) if isinstance(tspace, list) else tspace
+    xspace = np.array(xspace) if isinstance(xspace, list) else xspace
+
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.set_title(title, fontsize=14)
     ax.set_xlabel('$t$', fontsize=14)
