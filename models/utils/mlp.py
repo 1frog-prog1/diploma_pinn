@@ -2,6 +2,21 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+def normalize_layer(min_val, max_val):
+    """
+    Normalizes the input tensor x to the range [min_val, max_val].
+
+    Args:
+        x: torch.Tensor of shape (N, d) — N points in d-dimensional space (e.g., [x, t])
+        min_val: Minimum value for normalization
+        max_val: Maximum value for normalization
+
+    Returns:
+        torch.Tensor of shape (N, d) — normalized tensor
+    """
+    return lambda x: (x - min_val) / (max_val - min_val + 1e-8)  # Avoid division by zero
+
+
 def rff_transform(X, W, b):
     """
     Transforms input data X using Random Fourier Features (RFF).

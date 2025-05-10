@@ -93,24 +93,53 @@ def plot_single_heatmap_2d(tspace, xspace, data, title, cmap='seismic', save_pat
     if save_path:
         fig.savefig(save_path, bbox_inches='tight', dpi=300)
 
-def plot_loss(eval_losses, title="Loss Function", save_path=None):
-    """
-    Plots the loss function on a semilogarithmic scale.
 
-    :param eval_losses: List or array of loss values.
+def plot_loss(eval_losses, title="Loss Function", save_path=None, alpha=1.0):
+    """
+    Plots the loss function(s) on a semilogarithmic scale.
+
+    :param eval_losses: List or array of loss values, a list of lists/arrays
+                        of loss values for multiple curves, or a dictionary
+                        where keys are labels and values are lists/arrays of losses.
     :param title: Title for the plot.
     :param save_path: Path to save the figure (optional).
+    :param alpha: Transparency level for the plotted lines (0.0 to 1.0).
     """
     fig = plt.figure(figsize=(9, 6))
     ax = fig.add_subplot(111)
-    ax.semilogy(range(len(eval_losses)), eval_losses, 'k-', label='Loss')
+
+    if isinstance(eval_losses, dict):
+        # Plot multiple curves from a dictionary
+        for label, losses in eval_losses.items():
+            if isinstance(losses, (list, np.ndarray)):
+                ax.semilogy(range(len(losses)), losses, label=label, alpha=alpha)
+            else:
+                print(f"Warning: Value for key '{label}' is not a list or array and will be skipped.")
+
+    elif isinstance(eval_losses, list) and all(isinstance(l, (list, np.ndarray)) for l in eval_losses):
+        # Plot multiple curves from a list of lists/arrays
+        for i, losses in enumerate(eval_losses):
+            ax.semilogy(range(len(losses)), losses, label=f'Loss {i+1}', alpha=alpha)
+
+    elif isinstance(eval_losses, (list, np.ndarray)):
+        # Plot a single curve (original functionality)
+        ax.semilogy(range(len(eval_losses)), eval_losses, 'k-', label='Loss', alpha=alpha)
+
+    else:
+        print("Error: Input 'eval_losses' must be a list, numpy array, list of lists/arrays, or a dictionary.")
+        plt.close(fig) # Close the figure if input is invalid
+        return
+
+
     ax.set_xlabel('$n_{epoch}$', fontsize=14)
     ax.set_ylabel('$\mathcal{L}$', fontsize=14)
     ax.set_title(title, fontsize=16)
     ax.grid(True, which="both", linestyle="--", alpha=0.7)
     ax.legend(fontsize=12)
+
     if save_path:
         fig.savefig(save_path, bbox_inches='tight', dpi=300)
+
     plt.show()
 
 # ========================= Other Dimensional Functions =========================

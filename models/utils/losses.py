@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+import torch.autograd as autograd
 
 # PINN Loss
 class PINN_Loss(nn.Module):
@@ -55,13 +55,13 @@ class PINN_Loss(nn.Module):
 class SA_PINN_Loss(nn.Module):
     def __init__(self, points_pde, points_ics, points_bcs, equation, u_model, mask_class):
         super(SA_PINN_Loss, self).__init__()
-        self.lambdas_pde = nn.Parameter(torch.ones(points_pde.shape[0]))
-        self.lambdas_ics = nn.Parameter(torch.ones(points_ics.shape[0]))
-        self.lambdas_bcs = nn.Parameter(torch.ones(points_bcs.shape[0]))
+        self.lambdas_pde = nn.Parameter(torch.ones((points_pde.shape[0], 1)))
+        self.lambdas_ics = nn.Parameter(torch.ones((points_ics.shape[0], 1)))
+        self.lambdas_bcs = nn.Parameter(torch.ones((points_bcs.shape[0], 1)))
         self.equation = equation
         self.u_model = u_model
         self.mask_class = mask_class
-        self.mask = mask_class(c=1.0, q=2)
+        self.mask = mask_class()
 
     def compute_physics_loss(self, res_pred):
         return torch.mean(self.mask(self.lambdas_pde) * (res_pred ** 2))
@@ -106,7 +106,7 @@ class SA_PINN_Loss(nn.Module):
             ctx.save_for_backward(res_pred, u_pred_bcs, u_bcs, u_pred_ics, u_ics, lambdas_pde, lambdas_bcs, lambdas_ics)
             ctx.mask_class = mask_class
 
-            mask = mask_class(c=1.0, q=2)
+            mask = mask_class()
 
             # Physics loss
             loss_pde = torch.mean(mask(lambdas_pde) * (res_pred ** 2))
@@ -125,17 +125,17 @@ class SA_PINN_Loss(nn.Module):
             # Retrieve saved tensors and mask parameters
             res_pred, u_pred_bcs, u_bcs, u_pred_ics, u_ics, lambdas_pde, lambdas_bcs, lambdas_ics = ctx.saved_tensors
             mask_class = ctx.mask_class
-            mask = mask_class(c=1.0, q=2)
+            mask = mask_class()
 
             # Gradients for residuals and predictions
-            grad_res_pred = 2 * mask(lambdas_pde) * res_pred / res_pred.numel()
+            grad_res_pred = 2 * mask(lambdas_pde) * (res_pred) / res_pred.numel()
             grad_u_pred_bcs = 2 * mask(lambdas_bcs) * (u_pred_bcs - u_bcs) / u_pred_bcs.numel()
             grad_u_pred_ics = 2 * mask(lambdas_ics) * (u_pred_ics - u_ics) / u_pred_ics.numel()
 
             # Gradients for lambdas (trainable parameters)
-            grad_lambdas_pde = 2 * res_pred ** 2 * mask.c * lambdas_pde ** (mask.q - 1) / res_pred.numel()
-            grad_lambdas_bcs = 2 * (u_pred_bcs - u_bcs) ** 2 * mask.c * lambdas_bcs ** (mask.q - 1) / u_pred_bcs.numel()
-            grad_lambdas_ics = 2 * (u_pred_ics - u_ics) ** 2 * mask.c * lambdas_ics ** (mask.q - 1) / u_pred_ics.numel()
+            grad_lambdas_pde = mask.backward(lambdas_pde) * res_pred ** 2  / res_pred.numel()
+            grad_lambdas_bcs = mask.backward(lambdas_bcs) * (u_pred_bcs - u_bcs) ** 2 / u_pred_bcs.numel()
+            grad_lambdas_ics = mask.backward(lambdas_ics) * (u_pred_ics - u_ics) ** 2 / u_pred_ics.numel()
 
             # Return gradients for all inputs
             return (
@@ -144,8 +144,8 @@ class SA_PINN_Loss(nn.Module):
                 None,                           # No gradient for u_bcs
                 grad_output * grad_u_pred_ics,  # Gradient for u_pred_ics
                 None,  # No gradient for u_ics
-                -grad_output * grad_lambdas_pde,  # Gradient for lambdas_pde
-                -grad_output * grad_lambdas_bcs,  # Gradient for lambdas_bcs
-                -grad_output * grad_lambdas_ics,  # Gradient for lambdas_ics
+                -grad_output * grad_lambdas_pde,  # Antigradient for lambdas_pde
+                -grad_output * grad_lambdas_bcs,  # Antigradient for lambdas_bcs
+                -grad_output * grad_lambdas_ics,  # Antigradient for lambdas_ics
                 None  # No gradient for mask
             )
