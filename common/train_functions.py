@@ -14,6 +14,7 @@ def move_data_to_device(device, *args):
             updated_args.append(None)  # Keep None as is
     return updated_args
 
+
 # Move training data to the specified device
 def move_training_data_to_device(
         device, 
@@ -23,6 +24,31 @@ def move_training_data_to_device(
         device, x_data, u_data, x_physics, x_initial, x_boundary
     )
     return x_data, u_data, x_physics, x_initial, x_boundary
+
+
+def resample_data(X_r, X_0, X_b, lb, ub, device="cpu"):
+    X_r, X_0, X_b = move_data_to_device(
+        "cpu", X_r, X_0, X_b
+    )
+
+    # Generate points for initial conditions
+    t_0 = torch.ones((len(X_0), 1), dtype=torch.float32, requires_grad=True) * lb[0]
+    x_0 = torch.rand((len(X_0), 1), dtype=torch.float32, requires_grad=True) * (ub[1] - lb[1]) + lb[1]
+    X_0 = torch.cat([t_0, x_0], dim=1)
+    X_0 = X_0.to(device)
+
+    # Generate points for boundary conditions
+    t_b = torch.rand((len(X_b), 1), dtype=torch.float32, requires_grad=True) * (ub[0] - lb[0]) + lb[0]
+    x_b = lb[1] + (ub[1] - lb[1]) * torch.bernoulli(torch.full((len(X_b), 1), 0.5, dtype=torch.float32))
+    x_b.requires_grad_(True)  # Set requires_grad=True for x_b
+    X_b = torch.cat([t_b, x_b], dim=1).to(device)
+
+    # Generate points for collocation
+    t_r = torch.rand((len(X_r), 1), dtype=torch.float32, requires_grad=True) * (ub[0] - lb[0]) + lb[0]
+    x_r = torch.rand((len(X_r), 1), dtype=torch.float32, requires_grad=True) * (ub[1] - lb[1]) + lb[1]
+    X_r = torch.cat([t_r, x_r], dim=1).to(device)
+    
+    return X_r, X_0, X_b
 
 # Train PINN for one epoch
 def train_epoch_pinn(
@@ -113,7 +139,8 @@ def train_pinn(
     max_epoch, 
     model, optimizers, schedulers,
     x_physics, x_initial, x_boundary, 
-    x_data=None, u_data=None, device="cpu"
+    x_data=None, u_data=None, device="cpu",
+    random_resample_every_N=None, lb=None, ub=None
 ):
     """
     Train PINN.
@@ -151,11 +178,19 @@ def train_pinn(
         if device == "cuda":
             torch.cuda.empty_cache()
 
+        if random_resample_every_N is not None:
+            if epoch % random_resample_every_N == 0:
+                if lb is None or ub is None:
+                    raise ValueError("Values for lb and ub must be specified")
+                else:
+                    x_physics, x_initial, x_boundary = resample_data(
+                        x_physics, x_initial, x_boundary, lb, ub, device
+                    )
+
     if device == "cuda":
         x_data, u_data, x_physics, x_initial, x_boundary = move_training_data_to_device(
             "cpu", x_data, u_data, x_physics, x_initial, x_boundary
         )
-
     return train_losses, eval_losses
 
 
