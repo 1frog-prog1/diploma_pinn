@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from models.utils.losses import PINN_Loss
 
@@ -16,8 +17,7 @@ def move_data_to_device(device, *args):
 # Move training data to the specified device
 def move_training_data_to_device(
         device, 
-        x_data, u_data, x_physics, x_initial, x_boundary,
-        model, optimizers
+        x_data, u_data, x_physics, x_initial, x_boundary
     ):
     x_data, u_data, x_physics, x_initial, x_boundary = move_data_to_device(
         device, x_data, u_data, x_physics, x_initial, x_boundary
@@ -83,6 +83,11 @@ def eval_pinn(
     model.eval()
     total_loss = 0.0
 
+    if device == "cuda":
+        x_data, u_data, x_physics, x_initial, x_boundary = move_training_data_to_device(
+            device, x_data, u_data, x_physics, x_initial, x_boundary
+        )
+
     # Compute the loss function
     loss = criterion(
         x_pde=x_physics, 
@@ -92,6 +97,14 @@ def eval_pinn(
         u_data=u_data
     )
     total_loss += loss.item()
+
+    if device == "cuda":
+        torch.cuda.empty_cache()
+
+    if device == "cuda":
+        x_data, u_data, x_physics, x_initial, x_boundary = move_training_data_to_device(
+            "cpu", x_data, u_data, x_physics, x_initial, x_boundary
+        )
         
     return total_loss
 
@@ -108,8 +121,7 @@ def train_pinn(
 
     if device == "cuda":
         x_data, u_data, x_physics, x_initial, x_boundary = move_training_data_to_device(
-            device, x_data, u_data, x_physics, x_initial,
-            x_boundary, model, optimizers
+            device, x_data, u_data, x_physics, x_initial, x_boundary
         )
     
     train_losses, eval_losses = [], []
@@ -132,7 +144,7 @@ def train_pinn(
         eval_losses.append(true_loss)
 
         if (epoch + 1) % 50 == 0:
-            print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss}, True Loss: {true_loss}")
+            print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss:5.5f}, True Loss: {true_loss:5.5f}")
             # print("Cuda memory_allocated", torch.cuda.memory_allocated())  # Used memory
             # print("Cuda memory reserved", torch.cuda.memory_reserved()) 
             
@@ -141,8 +153,44 @@ def train_pinn(
 
     if device == "cuda":
         x_data, u_data, x_physics, x_initial, x_boundary = move_training_data_to_device(
-            "cpu", x_data, u_data, x_physics, x_initial,
-            x_boundary, model, optimizers
+            "cpu", x_data, u_data, x_physics, x_initial, x_boundary
         )
 
     return train_losses, eval_losses
+
+
+def rad_finetune_pinn(
+    max_epoch, 
+    model, optimizers, schedulers,
+    x_physics, x_initial, x_boundary, 
+    x_data=None, u_data=None, device="cpu",
+    resample_every_N=2000, resample_percent=0.1,
+    k=2, c=1
+):
+    resample_number_points = int(len(x_physics) * resample_percent)
+    criterion = PINN_Loss(model.equation, model.u_model)
+    number_of_resample = max_epoch // resample_every_N + 1
+    eval_losses = []
+
+    for resample_it in range(number_of_resample):
+        eps = model.equation.residual_function(model, x_physics[:, 0:1].to(device), x_physics[:, 1:].to(device)).to('cpu')
+        probs = eps**k / torch.mean(eps**k) + c
+        probs /= torch.sum(probs)
+        probs = probs.detach().numpy().flatten()
+        chosen_idxs = np.random.choice(
+            len(x_physics), size=resample_number_points, replace=False, p=probs
+        )
+        x_physics_resampled = x_physics[chosen_idxs]
+        finetune_epoch = min(max_epoch - resample_it * resample_every_N, resample_every_N)
+        print("Finetuning model on resampled data...")
+        train_pinn(
+            finetune_epoch, model, optimizers, schedulers, 
+            x_physics_resampled, x_initial, x_boundary, x_data, u_data, device
+        )
+
+        true_loss = eval_pinn(model, x_physics, x_initial, x_boundary, criterion, x_data, u_data, device)
+        eval_losses.append(true_loss)
+
+        print(f"Resample epoch: {resample_it + 1}/{number_of_resample}: Eval Loss: {true_loss:5.5f}")
+
+    return eval_losses

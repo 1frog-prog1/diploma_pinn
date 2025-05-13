@@ -18,7 +18,7 @@ class Burgers1D:
         :return: Residual of the Burgers equation.
         """
         u, u_t, u_x, u_xx = self.compute_derivatives(model, t, x)
-        return u_t + u * u_x - self.nu * u_xx
+        return torch.abs(u_t + u * u_x - self.nu * u_xx)
     
     def initial_conditions(self, x):
         """
