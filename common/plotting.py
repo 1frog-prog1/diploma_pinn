@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
-import math
 import torch
 
 # ========================= 2D Plotting Functions =========================
@@ -109,14 +108,11 @@ def plot_loss(eval_losses, title="Loss Function", save_path=None, alpha=1.0):
     fig = plt.figure(figsize=(9, 6))
     ax = fig.add_subplot(111)
 
-    all_losses = []
-
     if isinstance(eval_losses, dict):
         # Plot multiple curves from a dictionary
         for label, losses in eval_losses.items():
             if isinstance(losses, (list, np.ndarray)):
                 ax.semilogy(range(len(losses)), losses, label=label, alpha=alpha)
-                all_losses.extend(losses)
             else:
                 print(f"Warning: Value for key '{label}' is not a list or array and will be skipped.")
 
@@ -124,33 +120,16 @@ def plot_loss(eval_losses, title="Loss Function", save_path=None, alpha=1.0):
         # Plot multiple curves from a list of lists/arrays
         for i, losses in enumerate(eval_losses):
             ax.semilogy(range(len(losses)), losses, label=f'Loss {i+1}', alpha=alpha)
-            all_losses.extend(losses)
 
     elif isinstance(eval_losses, (list, np.ndarray)):
         # Plot a single curve (original functionality)
         ax.semilogy(range(len(eval_losses)), eval_losses, 'k-', label='Loss', alpha=alpha)
-        all_losses.extend(eval_losses)
+
     else:
         print("Error: Input 'eval_losses' must be a list, numpy array, list of lists/arrays, or a dictionary.")
         plt.close(fig) # Close the figure if input is invalid
         return
 
-    if all_losses:
-        min_loss = min(all_losses)
-        max_loss = max(all_losses)
-
-    # Определяем диапазон степеней 10
-    # Используем floor для нижней границы и ceil для верхней
-    start_power = math.floor(math.log10(min_loss))
-    end_power = math.ceil(math.log10(max_loss))
-
-    # Генерируем метки оси Y как степени 10
-    y_ticks = [10**p for p in range(int(start_power), int(end_power) + 1)]
-
-    # Устанавливаем метки оси Y
-    ax.set_yticks(y_ticks)
-    # Форматируем метки как 10 в степени (используем LaTeX для красивого отображения)
-    ax.set_yticklabels([f'$10^{{{p}}}$' for p in range(int(start_power), int(end_power) + 1)])
 
     ax.set_xlabel('$n_{epoch}$', fontsize=14)
     ax.set_ylabel('$\mathcal{L}$', fontsize=14)

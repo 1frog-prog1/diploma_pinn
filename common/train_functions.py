@@ -200,7 +200,7 @@ def rad_finetune_pinn(
     x_physics, x_initial, x_boundary, 
     x_data=None, u_data=None, device="cpu",
     resample_every_N=2000, resample_percent=0.1,
-    k=2, c=1
+    k=2, c=1, random_resample_every_N=None, lb=None, ub=None
 ):
     resample_number_points = int(len(x_physics) * resample_percent)
     criterion = PINN_Loss(model.equation, model.u_model)
@@ -220,7 +220,8 @@ def rad_finetune_pinn(
         print("Finetuning model on resampled data...")
         train_pinn(
             finetune_epoch, model, optimizers, schedulers, 
-            x_physics_resampled, x_initial, x_boundary, x_data, u_data, device
+            x_physics_resampled, x_initial, x_boundary, x_data, u_data, device,
+            random_resample_every_N, lb, ub
         )
 
         true_loss = eval_pinn(model, x_physics, x_initial, x_boundary, criterion, x_data, u_data, device)
