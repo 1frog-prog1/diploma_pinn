@@ -6,6 +6,8 @@ __pycache__/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
+.vscode/*
+
 # Environment files
 .env
 .venv/
@@ -13,7 +15,7 @@ env/
 venv/
 
 # Data files
-*.json
+# *.json
 *.csv
 *.h5
 *.npz
@@ -28,12 +30,12 @@ venv/
 Thumbs.db
 
 # PyTorch model files
-*.pt
+# *.pt
 *.pth
 
 # Matplotlib figures
-*.png
-*.pdf
+# *.png
+# *.pdf
 
 # Temporary files
 *.tmp
