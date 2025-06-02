@@ -1,8 +1,8 @@
 from torch import nn
 from .utils.base_classes import BasePINN
-from .utils.losses import PINN_Loss
+from .utils.losses import DB_PINN_Loss
 
-class PINN(BasePINN):
+class DB_PINN(BasePINN):
     def __init__(
         self,
         input_dim, output_dim, hidden_layers,
@@ -15,7 +15,7 @@ class PINN(BasePINN):
             output_dim=output_dim,
             hidden_layers=hidden_layers,
             equation=equation,
-            loss_class=PINN_Loss,
+            loss_class=DB_PINN_Loss,
             activation=activation,
             scaling_function=scaling_function,
             rff_features=rff_features,
