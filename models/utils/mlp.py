@@ -69,17 +69,14 @@ class MLP(nn.Module):
         if seed is not None:
             gen.manual_seed(seed)
 
-        W = nn.Parameter(
-            torch.normal(
-                mean=0.0, std=1.0 / rff_sigma, 
-                size=(self.rff_features, input_dim), generator=gen
-            ),
-            requires_grad=False  # W is not trainable
+        W = torch.normal(
+            mean=0.0, std=1.0 / rff_sigma,
+            size=(self.rff_features, input_dim), generator=gen
         )
-        b = nn.Parameter(
-            torch.rand(self.rff_features, generator=gen) * 2 * torch.pi,
-            requires_grad=False  # b is not trainable
-        )
+        self.register_buffer("W", W)
+
+        b = torch.rand(self.rff_features, generator=gen) * 2 * torch.pi
+        self.register_buffer("b", b)
         return W, b
 
     def forward(self, x):
