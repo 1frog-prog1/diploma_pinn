@@ -10,6 +10,7 @@ class MLP(BaseModel):
     ):
         super(MLP, self).__init__(
             input_dim=input_dim,
+            output_dim=output_dim,
             rff_features=rff_features,
             rff_sigma=rff_sigma,
             scaling_function=scaling_function,
