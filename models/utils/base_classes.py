@@ -75,17 +75,21 @@ class BasePINN(nn.Module):
         hidden_layers,
         equation,
         loss_class,
-        model_class,              # <- обязательно передаётся пользовательский класс модели
+        model_class=None,
         activation=nn.Tanh(),
         scaling_function=None,
         rff_features=0,
         rff_sigma=1.0,
         seed=None,
+        model_kwargs=None,
         loss_kwargs=None
     ):
         super(BasePINN, self).__init__()
         self.equation = equation
 
+        if model_class is None:
+            model_class = MLP
+        
         self.u_model = model_class(
             input_dim=input_dim,
             output_dim=output_dim,
@@ -94,7 +98,8 @@ class BasePINN(nn.Module):
             scaling_function=scaling_function,
             rff_features=rff_features,
             rff_sigma=rff_sigma,
-            seed=seed
+            seed=seed,
+            **model_kwargs
         )
 
         loss_kwargs = loss_kwargs or {}
