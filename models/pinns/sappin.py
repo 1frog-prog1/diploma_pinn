@@ -1,7 +1,7 @@
 from torch import nn
-from .utils.base_classes import BasePINN
-from .utils.losses import SA_PINN_Loss
-from .utils.masks import PolynomialMask
+from base_class import BasePINN
+from losses import SA_PINN_Loss
+from ..utils.masks import PolynomialMask
 
 class SA_PINN(BasePINN):
     def __init__(

@@ -1,6 +1,6 @@
 from torch import nn
-from .utils.base_classes import BasePINN
-from .utils.losses import PINN_Loss
+from base_class import BasePINN
+from losses import PINN_Loss
 
 class PirateNetPINN(BasePINN):
     def __init__(
