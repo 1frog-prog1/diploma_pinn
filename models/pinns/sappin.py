@@ -1,6 +1,6 @@
 from torch import nn
-from base_class import BasePINN
-from losses import SA_PINN_Loss
+from .base_class import BasePINN
+from models.losses import SA_PINN_Loss
 from ..utils.masks import PolynomialMask
 
 class SA_PINN(BasePINN):

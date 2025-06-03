@@ -1,12 +1,11 @@
 import torch.nn as nn
-from base_models import MLP
+from models.base_models import MLP
 
 class BasePINN(nn.Module):
     def __init__(
         self,
         input_dim,
         output_dim,
-        hidden_layers,
         equation,
         loss_class,
         model_class=None,
@@ -23,11 +22,11 @@ class BasePINN(nn.Module):
 
         if model_class is None:
             model_class = MLP
+        model_kwargs = model_kwargs or {}
         
         self.u_model = model_class(
             input_dim=input_dim,
             output_dim=output_dim,
-            hidden_layers=hidden_layers,
             activation=activation,
             scaling_function=scaling_function,
             rff_features=rff_features,

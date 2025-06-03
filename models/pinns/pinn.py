@@ -1,6 +1,6 @@
 from torch import nn
-from base_class import BasePINN
-from losses import PINN_Loss
+from .base_class import BasePINN
+from models.losses import PINN_Loss
 
 class PINN(BasePINN):
     def __init__(

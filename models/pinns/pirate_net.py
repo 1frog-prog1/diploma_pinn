@@ -1,18 +1,18 @@
 from torch import nn
-from base_class import BasePINN
-from losses import PINN_Loss
+from .base_class import BasePINN
+from models.losses import PINN_Loss
+from models.base_models import PirateNet
 
 class PirateNetPINN(BasePINN):
     def __init__(
         self,
         input_dim,
         output_dim,
-        hidden_layers,
         equation,
         loss_class=PINN_Loss,
         activation=nn.Tanh(),
         scaling_function=None,
-        rff_features=0,
+        rff_features=20,
         rff_sigma=1.0,
         seed=None,
         num_blocks=3,
@@ -22,8 +22,8 @@ class PirateNetPINN(BasePINN):
         super().__init__(
             input_dim=input_dim,
             output_dim=output_dim,
-            hidden_layers=hidden_layers,
             equation=equation,
+            model_class=PirateNet,
             loss_class=loss_class,
             activation=activation,
             scaling_function=scaling_function,
