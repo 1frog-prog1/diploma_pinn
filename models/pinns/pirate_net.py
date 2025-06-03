@@ -18,13 +18,17 @@ class PirateNetPINN(BasePINN):
         num_blocks=3,
         loss_kwargs=None
     ):
-        model_kwargs = {"num_blocks" : num_blocks}
+        model_kwargs = {
+            "num_blocks" : num_blocks,
+            "hidden_dim": 2 * rff_features + input_dim
+        }
         super().__init__(
             input_dim=input_dim,
             output_dim=output_dim,
             equation=equation,
             model_class=PirateNet,
             loss_class=loss_class,
+            hidden_layers=None,  # определяется num_blocks
             activation=activation,
             scaling_function=scaling_function,
             rff_features=rff_features,

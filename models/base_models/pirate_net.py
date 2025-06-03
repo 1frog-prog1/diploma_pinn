@@ -27,10 +27,13 @@ class PirateNet(BaseModel):
         self, input_dim, hidden_dim, output_dim,
         num_blocks=3,
         activation=nn.Tanh(), scaling_function=None,
-        rff_features=0, rff_sigma=1.0, seed=None
+        rff_features=0, rff_sigma=1.0, seed=None,
+        **kwargs
     ):
         super(PirateNet, self).__init__(
             input_dim=input_dim,
+            output_dim=output_dim,
+            activation=activation,
             rff_features=rff_features,
             rff_sigma=rff_sigma,
             scaling_function=scaling_function,

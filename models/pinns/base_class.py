@@ -6,6 +6,7 @@ class BasePINN(nn.Module):
         self,
         input_dim,
         output_dim,
+        hidden_layers,
         equation,
         loss_class,
         model_class=None,
@@ -27,6 +28,7 @@ class BasePINN(nn.Module):
         self.u_model = model_class(
             input_dim=input_dim,
             output_dim=output_dim,
+            hidden_layers=hidden_layers,
             activation=activation,
             scaling_function=scaling_function,
             rff_features=rff_features,
