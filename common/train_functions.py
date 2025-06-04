@@ -195,6 +195,8 @@ def train_pinn(
                 print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss:5.5f}, True Loss: {true_loss[0]:5.5f}")
                 distinct_losses = true_loss[1]
                 for key, value in distinct_losses.items():
+                    if key == "data_loss" and (x_data is None or u_data is None):
+                        continue
                     print(f"{key}: {value.item():5.5f}")
             # print("Cuda memory_allocated", torch.cuda.memory_allocated())  # Used memory
             # print("Cuda memory reserved", torch.cuda.memory_reserved()) 
