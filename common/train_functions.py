@@ -102,7 +102,9 @@ def eval_pinn(
         model, x_physics, x_initial, x_boundary, 
         criterion,
         x_data=None, u_data=None, 
-        device="cpu"):
+        device="cpu",
+        calc_distinct_losses=False
+    ):
     """
     Evaluate PINN on the base loss.
     """
@@ -114,15 +116,27 @@ def eval_pinn(
             device, x_data, u_data, x_physics, x_initial, x_boundary
         )
 
-    # Compute the loss function
-    loss = criterion(
-        x_pde=x_physics, 
-        x_ics=x_initial, 
-        x_bcs=x_boundary, 
-        x_data=x_data, 
-        u_data=u_data
-    )
-    total_loss += loss.item()
+    if calc_distinct_losses:
+        distinct_losses = criterion.get_distinct_losses(
+            x_pde=x_physics, 
+            x_ics=x_initial, 
+            x_bcs=x_boundary, 
+            x_data=x_data, 
+            u_data=u_data
+        )
+        distinct_losses = {key: value.detach().cpu() for key, value in distinct_losses.items()}
+        total_loss = 0
+        for key, value in distinct_losses.items():
+            total_loss += value
+
+    else:
+        total_loss = criterion(
+            x_pde=x_physics, 
+            x_ics=x_initial, 
+            x_bcs=x_boundary, 
+            x_data=x_data, 
+            u_data=u_data
+        ).detach().cpu()
 
     if device == "cuda":
         torch.cuda.empty_cache()
@@ -131,7 +145,9 @@ def eval_pinn(
         x_data, u_data, x_physics, x_initial, x_boundary = move_training_data_to_device(
             "cpu", x_data, u_data, x_physics, x_initial, x_boundary
         )
-        
+
+    if calc_distinct_losses:
+        return total_loss, distinct_losses
     return total_loss
 
 # Train PINN
@@ -140,7 +156,8 @@ def train_pinn(
     model, optimizers, schedulers,
     x_physics, x_initial, x_boundary, 
     x_data=None, u_data=None, device="cpu",
-    random_resample_every_N=None, lb=None, ub=None
+    random_resample_every_N=None, lb=None, ub=None,
+    calc_distinct_losses=False, show_distinct_losses=False
 ):
     """
     Train PINN.
@@ -166,12 +183,19 @@ def train_pinn(
 
         true_loss = eval_pinn(
             model, x_physics, x_initial, x_boundary, 
-            criterion, x_data, u_data, device
+            criterion, x_data, u_data, device,
+            calc_distinct_losses=(calc_distinct_losses or show_distinct_losses)
         )
         eval_losses.append(true_loss)
 
         if (epoch + 1) % 50 == 0:
-            print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss:5.5f}, True Loss: {true_loss:5.5f}")
+            if not show_distinct_losses:
+                print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss:5.5f}, True Loss: {true_loss:5.5f}")
+            else:
+                print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss:5.5f}, True Loss: {true_loss[0]:5.5f}")
+                distinct_losses = true_loss[1]
+                for key, value in distinct_losses.items():
+                    print(f"{key}: {value.item():5.5f}")
             # print("Cuda memory_allocated", torch.cuda.memory_allocated())  # Used memory
             # print("Cuda memory reserved", torch.cuda.memory_reserved()) 
             
