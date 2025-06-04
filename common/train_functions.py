@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from models.utils.losses import PINN_Loss
+from models.losses import PINN_Loss
 
 # Move all data to the specified device
 def move_data_to_device(device, *args):
