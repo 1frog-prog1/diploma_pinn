@@ -81,7 +81,7 @@ class Burgers1D:
             if t_val <= 0:
                 return phi0(x_val)
             integrand = lambda y: G(x_val - y, t_val) * phi0(y)
-            result, _ = quad(integrand, -1, 1, epsabs=1e-10, epsrel=1e-10)
+            result, _ = quad(integrand, -1, 1)
             return result
 
         def compute_u(t_vals, x_vals):
