@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from scipy.stats import qmc
 from models.losses import PINN_Loss
 
 # Move all data to the specified device
@@ -26,28 +27,36 @@ def move_training_data_to_device(
     return x_data, u_data, x_physics, x_initial, x_boundary
 
 
-def resample_data(X_r, X_0, X_b, lb, ub, device="cpu"):
+def sample_with_sampler(sampler_type, n, lb, ub):
+    if sampler_type == "random":
+        X = torch.rand((n, len(lb)), dtype=torch.float32)
+    if sampler_type == "sobol":
+        sampler = qmc.Sobol(d=len(lb), scramble=True)
+        X = torch.tensor(sampler.random(n), dtype=torch.float32)
+    X = qmc.scale(X.numpy(), lb, ub)
+    return torch.tensor(X, dtype=torch.float32, requires_grad=True)
+
+
+def resample_data(sampler_type, X_r, X_0, X_b, lb, ub, device="cpu"):
     X_r, X_0, X_b = move_data_to_device(
         "cpu", X_r, X_0, X_b
     )
 
     # Generate points for initial conditions
-    t_0 = torch.ones((len(X_0), 1), dtype=torch.float32, requires_grad=True) * lb[0]
-    x_0 = torch.rand((len(X_0), 1), dtype=torch.float32, requires_grad=True) * (ub[1] - lb[1]) + lb[1]
+    t_0 = torch.ones((len(X_0), 1), dtype=torch.float32) * lb[0]
+    x_0 = sample_with_sampler(sampler_type, len(X_0), lb[1:], ub[1:])
     X_0 = torch.cat([t_0, x_0], dim=1)
     X_0 = X_0.to(device)
 
     # Generate points for boundary conditions
-    t_b = torch.rand((len(X_b), 1), dtype=torch.float32, requires_grad=True) * (ub[0] - lb[0]) + lb[0]
-    x_b = lb[1] + (ub[1] - lb[1]) * torch.bernoulli(torch.full((len(X_b), 1), 0.5, dtype=torch.float32))
-    x_b.requires_grad_(True)  # Set requires_grad=True for x_b
+    t_b = sample_with_sampler(sampler_type, len(X_b), lb[0:1], ub[0:1])
+    x_b = lb[1] + (ub[1:] - lb[1:]) * torch.bernoulli(torch.full((len(X_b), 1), 0.5, dtype=torch.float32))
     X_b = torch.cat([t_b, x_b], dim=1).to(device)
 
     # Generate points for collocation
-    t_r = torch.rand((len(X_r), 1), dtype=torch.float32, requires_grad=True) * (ub[0] - lb[0]) + lb[0]
-    x_r = torch.rand((len(X_r), 1), dtype=torch.float32, requires_grad=True) * (ub[1] - lb[1]) + lb[1]
-    X_r = torch.cat([t_r, x_r], dim=1).to(device)
-    
+    X_r = sample_with_sampler(sampler_type, len(X_r), lb, ub)
+    X_r = X_r.to(device)
+
     return X_r, X_0, X_b
 
 # Train PINN for one epoch
@@ -124,7 +133,7 @@ def eval_pinn(
             x_data=x_data, 
             u_data=u_data
         )
-        distinct_losses = {key: value.detach().cpu() for key, value in distinct_losses.items()}
+        distinct_losses = {key: value.detach().cpu().item() for key, value in distinct_losses.items()}
         total_loss = 0
         for key, value in distinct_losses.items():
             total_loss += value
@@ -147,7 +156,8 @@ def eval_pinn(
         )
 
     if calc_distinct_losses:
-        return total_loss, distinct_losses
+        distinct_losses["total_loss"] = total_loss
+        return distinct_losses
     return total_loss
 
 # Train PINN
@@ -157,6 +167,7 @@ def train_pinn(
     x_physics, x_initial, x_boundary, 
     x_data=None, u_data=None, device="cpu",
     random_resample_every_N=None, lb=None, ub=None,
+    sampler_type="random",
     calc_distinct_losses=False, show_distinct_losses=False
 ):
     """
@@ -192,12 +203,12 @@ def train_pinn(
             if not show_distinct_losses:
                 print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss:5.5f}, True Loss: {true_loss:5.5f}")
             else:
-                print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss:5.5f}, True Loss: {true_loss[0]:5.5f}")
-                distinct_losses = true_loss[1]
-                for key, value in distinct_losses.items():
+                print(f"Epoch: {epoch+1}/{max_epoch}, PINN Loss: {train_loss:5.5f}", end="\t")
+                for key, value in true_loss.items():
                     if key == "data_loss" and (x_data is None or u_data is None):
                         continue
-                    print(f"{key}: {value.item():5.5f}")
+                    print(f"{key}: {value:5.5f}", end="\t")
+                print()
             # print("Cuda memory_allocated", torch.cuda.memory_allocated())  # Used memory
             # print("Cuda memory reserved", torch.cuda.memory_reserved()) 
             
@@ -210,7 +221,7 @@ def train_pinn(
                     raise ValueError("Values for lb and ub must be specified")
                 else:
                     x_physics, x_initial, x_boundary = resample_data(
-                        x_physics, x_initial, x_boundary, lb, ub, device
+                        sampler_type, x_physics, x_initial, x_boundary, lb, ub, device
                     )
 
     if device == "cuda":
@@ -226,6 +237,7 @@ def rad_finetune_pinn(
     x_physics, x_initial, x_boundary, 
     x_data=None, u_data=None, device="cpu",
     resample_every_N=2000, resample_percent=0.1,
+    sampler_type="random",
     k=2, c=1, lb=None, ub=None
 ):
     resample_number_points = int(len(x_physics) * resample_percent)
@@ -253,7 +265,7 @@ def rad_finetune_pinn(
 
         if lb is None or ub is None:
             x_physics, x_initial, x_boundary = resample_data(
-                x_physics, x_initial, x_boundary, lb, ub, device
+                sampler_type, x_physics, x_initial, x_boundary, lb, ub, device
             )
 
         eval_losses.append(true_loss)

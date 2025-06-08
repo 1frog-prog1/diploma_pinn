@@ -50,6 +50,7 @@ class DB_PINN_Loss(BasePINNLoss):
             grad_ratio = torch.sum(
                 (grads_phys.abs().max()) / (self.coeff_vector * loss_grad_vector + 1e-8).abs().mean()
             )
+            grad_ratio = grad_ratio.sqrt()
 
             if self.step == 0:
                 self.run_loss_mean = loss_vector
